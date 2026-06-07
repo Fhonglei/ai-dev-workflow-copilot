@@ -12,6 +12,7 @@ AI Dev Workflow Copilot sits between GitHub and an engineering team. It receives
 | FastAPI API | Accepts URL analysis requests, webhook payloads, and task queries |
 | GitHub client | Fetches Issue/PR/README/file/check-run context |
 | Analyzer | Uses DeepSeek when configured, otherwise deterministic fallback rules |
+| CI log analyzer | Converts pasted CI/test logs into the same triage schema |
 | SQLite store | Stores workflow tasks and analysis output |
 | GitHub automation | Optionally posts comments and applies labels when `GITHUB_TOKEN` is configured |
 
@@ -55,4 +56,3 @@ sequenceDiagram
 - Add rate limiting for webhook and analysis endpoints.
 - Add Sentry or OpenTelemetry for production observability.
 - Add an evaluation dataset for triage quality.
-

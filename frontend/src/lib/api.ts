@@ -16,7 +16,7 @@ export type Analysis = {
 
 export type WorkflowTask = {
   id: string
-  kind: 'issue' | 'pull_request' | 'webhook_simulation'
+  kind: 'issue' | 'pull_request' | 'webhook_simulation' | 'ci_failure'
   status: 'received' | 'fetching_context' | 'analyzing' | 'completed' | 'failed'
   source_url?: string
   repo_full_name?: string
@@ -60,6 +60,21 @@ export async function simulateWebhook(payload: string): Promise<{ task_id: strin
   })
 }
 
+export async function analyzeCiLog(
+  repoFullName: string,
+  workflowName: string,
+  logText: string,
+): Promise<{ task_id: string; status: string }> {
+  return request('/api/analyze/ci-log', {
+    method: 'POST',
+    body: JSON.stringify({
+      repo_full_name: repoFullName,
+      workflow_name: workflowName,
+      log_text: logText,
+    }),
+  })
+}
+
 export async function listTasks(): Promise<WorkflowTask[]> {
   return request('/api/tasks')
 }
@@ -76,4 +91,3 @@ export async function getHealth(): Promise<{
 }> {
   return request('/api/health')
 }
-

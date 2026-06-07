@@ -1,14 +1,21 @@
-import asyncio
 from typing import List
 
 from fastapi import APIRouter, BackgroundTasks, Header, HTTPException, Request
 
 from app.config import settings
-from app.core.tasks import create_url_task, create_webhook_task, run_url_analysis, run_webhook_analysis
+from app.core.tasks import (
+    create_ci_log_task,
+    create_url_task,
+    create_webhook_task,
+    run_ci_log_analysis,
+    run_url_analysis,
+    run_webhook_analysis,
+)
 from app.core.webhook import verify_github_signature
 from app.db.store import get_task, list_tasks
 from app.models.schemas import (
     AnalyzeRequest,
+    CiLogAnalyzeRequest,
     HealthOut,
     TaskCreated,
     TaskOut,
@@ -43,6 +50,22 @@ async def analyze_issue_or_pr_sync(request: AnalyzeRequest) -> TaskOut:
     source_url = str(request.source_url)
     task_id = create_url_task(source_url)
     await run_url_analysis(task_id, source_url, request.auto_comment, request.apply_labels)
+    task = get_task(task_id)
+    assert task is not None
+    return task
+
+
+@router.post("/analyze/ci-log", response_model=TaskCreated)
+def analyze_ci_log(request: CiLogAnalyzeRequest, background_tasks: BackgroundTasks) -> TaskCreated:
+    task_id = create_ci_log_task(request.repo_full_name, request.workflow_name)
+    background_tasks.add_task(run_ci_log_analysis, task_id, request.repo_full_name, request.workflow_name, request.log_text)
+    return TaskCreated(task_id=task_id, status="received")
+
+
+@router.post("/analyze/ci-log/sync", response_model=TaskOut)
+async def analyze_ci_log_sync(request: CiLogAnalyzeRequest) -> TaskOut:
+    task_id = create_ci_log_task(request.repo_full_name, request.workflow_name)
+    await run_ci_log_analysis(task_id, request.repo_full_name, request.workflow_name, request.log_text)
     task = get_task(task_id)
     assert task is not None
     return task
@@ -85,4 +108,3 @@ async def github_webhook(
     task_id = create_webhook_task(x_github_event, payload)
     background_tasks.add_task(run_webhook_analysis, task_id, x_github_event, payload)
     return TaskCreated(task_id=task_id, status="received")
-

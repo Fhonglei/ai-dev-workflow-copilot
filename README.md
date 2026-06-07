@@ -6,11 +6,12 @@ This is designed as a portfolio-grade computer science internship project: it de
 
 ## Demo
 
-- Frontend preview: https://ai-dev-workflow-copilot-frontend-8cl7thg2i-fhongleis-projects.vercel.app
-- Backend preview health: https://ai-dev-workflow-copilot-1fc0z6g23-fhongleis-projects.vercel.app/api/health
+- Frontend preview: https://ai-dev-workflow-copilot-frontend-fhonglei-fhongleis-projects.vercel.app
+- Backend preview health: https://ai-dev-workflow-copilot-api-fhonglei-fhongleis-projects.vercel.app/api/health
 - Demo script: `docs/DEMO_SCRIPT.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Technical blog: `docs/TECHNICAL_BLOG.md`
+- Portfolio guide: `docs/PORTFOLIO.md`
 
 Railway deployment is configured, but the current Railway free plan resource limit blocked provisioning a new service. The backend is currently deployed on Vercel preview in fallback mode. The frontend includes a local demo fallback, so the online dashboard can still demonstrate the full triage result UI if the backend is unreachable from a visitor's network.
 
@@ -20,6 +21,7 @@ Railway deployment is configured, but the current Railway free plan resource lim
 - Fetch GitHub context: issue/PR body, labels, README excerpt, changed files, and check-run summary when available.
 - GitHub webhook endpoint for `issues` and `pull_request` events.
 - Webhook Simulator for demoing the workflow without configuring a real webhook.
+- CI failure log analyzer for pasted GitHub Actions or test logs.
 - AI analysis with DeepSeek-compatible chat API.
 - Rule-based fallback analysis when no LLM key is configured.
 - Task states: `received -> fetching_context -> analyzing -> completed`.
@@ -27,6 +29,7 @@ Railway deployment is configured, but the current Railway free plan resource lim
 - SQLite task history for local demos.
 - Next.js dashboard with status polling and triage result panels.
 - CI for backend tests and frontend lint/typecheck/build.
+- Small triage evaluation set with category and priority accuracy metrics plus a CI accuracy threshold.
 - Docker Compose for one-command local startup.
 
 ## Tech Stack
@@ -112,6 +115,8 @@ npm run dev
 | `GET` | `/api/health` | Service and integration status |
 | `POST` | `/api/analyze` | Start async analysis for a GitHub Issue/PR URL |
 | `POST` | `/api/analyze/sync` | Run analysis synchronously for tests/demos |
+| `POST` | `/api/analyze/ci-log` | Start async CI failure log analysis |
+| `POST` | `/api/analyze/ci-log/sync` | Run CI failure log analysis synchronously |
 | `GET` | `/api/tasks` | List recent workflow tasks |
 | `GET` | `/api/tasks/{id}` | Fetch one task and analysis result |
 | `POST` | `/api/webhooks/github` | GitHub webhook receiver |
@@ -134,6 +139,15 @@ npm run lint
 npm run typecheck
 npm run build
 ```
+
+Triage evaluation:
+
+```bash
+cd backend
+python scripts/evaluate_triage.py
+```
+
+The evaluation script writes `backend/evals/last_run.json` locally and fails CI if category or priority accuracy drops below the configured threshold.
 
 ## Deployment
 
@@ -165,6 +179,7 @@ This project shows practical software engineering work rather than only prompt c
 - Real GitHub API context retrieval.
 - LLM output structured into engineering decisions.
 - Background workflow states and task history.
+- CI failure triage and an evaluation dataset for output quality.
 - CI, tests, Docker, cloud deployment configuration.
 - A realistic use case for developer productivity teams, internal tools teams, and AI engineering roles.
 
@@ -181,5 +196,5 @@ This project shows practical software engineering work rather than only prompt c
 - Store tasks in PostgreSQL for production.
 - Add Redis/RQ queue for high-volume webhook processing.
 - Add CI failure log ingestion from GitHub Actions jobs.
-- Add evaluation set with labeled issues and accuracy metrics.
+- Expand the evaluation set with more labeled issues and PRs.
 - Add user accounts and per-user repository isolation.

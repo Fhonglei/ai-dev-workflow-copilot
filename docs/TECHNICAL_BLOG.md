@@ -23,9 +23,10 @@ The backend is a FastAPI service. It exposes:
 - `POST /api/analyze` for GitHub URLs.
 - `POST /api/webhooks/github` for real GitHub webhook events.
 - `POST /api/webhooks/simulate` for demos without webhook setup.
+- `POST /api/analyze/ci-log` for pasted CI or test failure logs.
 - `GET /api/tasks` and `GET /api/tasks/{id}` for the dashboard.
 
-The GitHub client fetches Issue or PR data, README context, changed files, and check-run summaries when available. The analyzer uses DeepSeek if configured, and otherwise falls back to deterministic keyword rules. This fallback is important because a portfolio demo should still work without paid credentials.
+The GitHub client fetches Issue or PR data, README context, changed files, and check-run summaries when available. The analyzer uses DeepSeek if configured, and otherwise falls back to deterministic keyword rules. This fallback is important because a portfolio demo should still work without paid credentials. The repository also includes a small labeled evaluation set for category and priority accuracy, so the project can discuss AI quality rather than only AI output.
 
 ## Security Decisions
 
@@ -47,4 +48,3 @@ The main engineering challenge is not just calling an LLM. The useful part is sh
 The next production step would be a GitHub App instead of personal tokens, PostgreSQL instead of SQLite, Redis/RQ for queueing, and an evaluation set of labeled issues to measure category and priority accuracy.
 
 This project is a good internship portfolio piece because it connects AI engineering with everyday software engineering workflows.
-

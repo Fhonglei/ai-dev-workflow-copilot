@@ -21,6 +21,7 @@ out/
 
 # Data
 backend/data/
+backend/evals/last_run.json
 
 # IDE / OS
 .idea/

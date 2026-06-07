@@ -1,0 +1,7 @@
+{"kind":"issue","repo":"Fhonglei/shop-api","number":1,"title":"Checkout returns 500 when coupon is expired","body":"Production checkout fails with an exception when users apply an expired coupon.","expected_category":"bug","expected_priority":"P0"}
+{"kind":"issue","repo":"Fhonglei/auth-service","number":2,"title":"Potential token leak in reset password logs","body":"The reset password flow appears to log bearer token values in debug output.","expected_category":"security","expected_priority":"P1"}
+{"kind":"pull_request","repo":"Fhonglei/web-dashboard","number":3,"title":"Refactor sidebar navigation components","body":"This PR extracts duplicated sidebar item rendering into a shared component.","expected_category":"refactor","expected_priority":"P2"}
+{"kind":"issue","repo":"Fhonglei/docs","number":4,"title":"README setup command is outdated","body":"The documentation still says npm install but the project requires npm ci in CI.","expected_category":"docs","expected_priority":"P3"}
+{"kind":"issue","repo":"Fhonglei/agent","number":5,"title":"Add support for scheduled weekly reports","body":"Feature request: support recurring research reports every Monday morning.","expected_category":"feature","expected_priority":"P3"}
+{"kind":"ci_failure","repo":"Fhonglei/api","number":6,"title":"CI failed on pytest","body":"FAILED tests/test_upload.py::test_large_file AssertionError expected 413 got 500 exit code 1","expected_category":"bug","expected_priority":"P2"}
+

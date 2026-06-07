@@ -1,11 +1,12 @@
 from datetime import datetime
+import re
 from typing import Any, Dict, List, Literal, Optional
 
-from pydantic import BaseModel, Field, HttpUrl
+from pydantic import BaseModel, Field, HttpUrl, field_validator
 
 
 TaskStatus = Literal["received", "fetching_context", "analyzing", "completed", "failed"]
-SourceKind = Literal["issue", "pull_request", "webhook_simulation"]
+SourceKind = Literal["issue", "pull_request", "webhook_simulation", "ci_failure"]
 
 
 class AnalyzeRequest(BaseModel):
@@ -13,10 +14,30 @@ class AnalyzeRequest(BaseModel):
     auto_comment: bool = False
     apply_labels: bool = False
 
+    @field_validator("source_url")
+    @classmethod
+    def validate_github_issue_or_pr_url(cls, value: HttpUrl) -> HttpUrl:
+        text = str(value)
+        if not re.search(r"github\.com/[^/]+/[^/]+/(issues|pull)/\d+", text):
+            raise ValueError("Only GitHub issue and pull request URLs are supported.")
+        return value
+
 
 class WebhookSimulationRequest(BaseModel):
-    event_type: str = Field(default="issues", examples=["issues", "pull_request"])
+    event_type: Literal["issues", "pull_request"] = Field(default="issues", examples=["issues", "pull_request"])
     payload: Dict[str, Any]
+
+
+class CiLogAnalyzeRequest(BaseModel):
+    repo_full_name: str = Field(
+        default="unknown/repo",
+        min_length=3,
+        max_length=120,
+        pattern=r"^[A-Za-z0-9_.-]+/[A-Za-z0-9_.-]+$",
+        examples=["Fhonglei/sample-app"],
+    )
+    workflow_name: str = Field(default="CI", min_length=1, max_length=120, examples=["CI"])
+    log_text: str = Field(min_length=20, max_length=20000)
 
 
 class AnalysisResult(BaseModel):
@@ -62,4 +83,3 @@ class HealthOut(BaseModel):
     llm_configured: bool
     github_configured: bool
     webhook_secret_configured: bool
-

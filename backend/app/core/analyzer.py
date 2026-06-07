@@ -1,4 +1,5 @@
 import json
+import re
 from typing import Any, Dict, List
 
 import httpx
@@ -16,6 +17,7 @@ def _keyword_score(text: str, keywords: List[str]) -> int:
 def heuristic_analysis(context: GitHubContext) -> AnalysisResult:
     text = f"{context.title}\n{context.body}".lower()
     security_score = _keyword_score(text, ["xss", "csrf", "auth", "token", "secret", "sql injection", "permission"])
+    ci_score = _keyword_score(text, ["traceback", "assertionerror", "npm err", "pytest", "failed", "exit code", "build failed"])
     bug_score = _keyword_score(text, ["error", "bug", "crash", "fail", "exception", "broken", "regression"])
     docs_score = _keyword_score(text, ["readme", "docs", "documentation", "typo"])
     feature_score = _keyword_score(text, ["feature", "support", "add", "request", "enhancement"])
@@ -23,6 +25,9 @@ def heuristic_analysis(context: GitHubContext) -> AnalysisResult:
     if security_score:
         category = "security"
         priority = "P1"
+    elif context.kind == "ci_failure" or ci_score >= 2:
+        category = "bug"
+        priority = "P1" if "production" in text or "deploy" in text else "P2"
     elif "production" in text or "urgent" in text or "data loss" in text:
         category = "bug"
         priority = "P0"
@@ -44,6 +49,9 @@ def heuristic_analysis(context: GitHubContext) -> AnalysisResult:
 
     modules = _guess_modules(context)
     labels = [category, priority.lower()]
+    if context.kind == "ci_failure":
+        labels.extend(["ci-failure", "needs-triage"])
+        return _ci_failure_result(context, category, priority, modules, labels)
     if context.kind == "pull_request":
         labels.append("needs-review")
     else:
@@ -91,6 +99,62 @@ def heuristic_analysis(context: GitHubContext) -> AnalysisResult:
     )
 
 
+def _ci_failure_result(
+    context: GitHubContext,
+    category: str,
+    priority: str,
+    modules: List[str],
+    labels: List[str],
+) -> AnalysisResult:
+    return AnalysisResult(
+        category=category,
+        priority=priority,
+        confidence_score=75 if settings.llm_configured else 62,
+        summary=(
+            f"CI workflow `{context.title}` failed in {context.repo_full_name}. "
+            f"The failure should be treated as `{category}` with priority `{priority}` because it blocks validation "
+            f"for {', '.join(modules[:3])}."
+        ),
+        suggested_labels=labels,
+        impact_modules=modules,
+        probable_causes=[
+            "A test assertion, build command, or dependency step failed in the CI job log.",
+            "The failing path is likely close to the test file, package command, or stack trace shown in the excerpt.",
+            "The pipeline may be missing a reproducible local command that developers can run before pushing.",
+        ],
+        action_plan=[
+            "Identify the first failing command and keep later cascading errors as secondary signals.",
+            "Reproduce the same command locally with the same runtime and environment variables.",
+            "Inspect the module named by the failing test, stack trace, or package manager output.",
+            "Fix the root cause, then rerun the specific failing test before rerunning the full CI suite.",
+        ],
+        test_plan=[
+            "Add or update a regression test for the failing assertion or command.",
+            "Run the exact failing CI command locally.",
+            "Run the full backend/frontend quality gate before merging.",
+        ],
+        acceptance_criteria=[
+            "The failing CI command passes locally and in GitHub Actions.",
+            "The root cause is documented in the PR or issue comment.",
+            "A focused regression test covers the failure mode when applicable.",
+        ],
+        review_checklist=[
+            "Does the fix address the first failing CI signal instead of only a downstream symptom?",
+            "Are environment assumptions such as secrets, paths, versions, and service availability explicit?",
+            "Did the author rerun the narrow failing command and the full quality gate?",
+        ],
+        maintainer_comment=(
+            f"AI CI triage: `{context.title}` is classified as `{category}` / `{priority}`. "
+            f"Likely affected area: {', '.join(modules)}. Start with the first failing command in the log, "
+            "reproduce it locally, then add or update regression coverage before merging."
+        ),
+        risks=[
+            "A truncated CI log can hide the first root-cause failure.",
+            "Missing secrets or network-only dependencies can make local reproduction differ from GitHub Actions.",
+        ],
+    )
+
+
 def _guess_modules(context: GitHubContext) -> List[str]:
     if context.changed_files:
         modules = []
@@ -110,10 +174,14 @@ def _guess_modules(context: GitHubContext) -> List[str]:
         "frontend": ["frontend", "ui", "page", "button", "react", "next"],
         "backend": ["api", "fastapi", "server", "endpoint", "database"],
         "auth": ["login", "auth", "token", "permission", "session"],
-        "ci": ["ci", "github actions", "workflow", "build", "test"],
+        "ci": ["ci", "github actions", "workflow", "build", "test", "pytest", "assertionerror", "exit code"],
+        "files": ["upload", "file", "blob", "storage"],
+        "dependencies": ["npm", "pip", "package", "dependency", "lockfile"],
         "docs": ["readme", "docs", "documentation"],
     }
     modules = [name for name, words in mapping.items() if any(word in text for word in words)]
+    if context.kind == "ci_failure" and "ci" not in modules:
+        modules.insert(0, "ci")
     return modules or ["application"]
 
 
@@ -147,6 +215,21 @@ def _analysis_schema_hint() -> str:
     )
 
 
+def parse_llm_json(content: str) -> Dict[str, Any]:
+    cleaned = content.strip()
+    if cleaned.startswith("```"):
+        cleaned = re.sub(r"^```(?:json)?", "", cleaned, flags=re.IGNORECASE).strip()
+        cleaned = re.sub(r"```$", "", cleaned).strip()
+    try:
+        return json.loads(cleaned)
+    except json.JSONDecodeError:
+        start = cleaned.find("{")
+        end = cleaned.rfind("}")
+        if start == -1 or end == -1 or end <= start:
+            raise
+        return json.loads(cleaned[start : end + 1])
+
+
 async def analyze_with_llm(context: GitHubContext) -> AnalysisResult:
     if not settings.llm_configured:
         return heuristic_analysis(context)
@@ -176,8 +259,7 @@ async def analyze_with_llm(context: GitHubContext) -> AnalysisResult:
             )
             response.raise_for_status()
             content = response.json()["choices"][0]["message"]["content"]
-            parsed: Dict[str, Any] = json.loads(content)
+            parsed: Dict[str, Any] = parse_llm_json(content)
             return AnalysisResult.model_validate(parsed)
     except Exception:
         return heuristic_analysis(context)
-

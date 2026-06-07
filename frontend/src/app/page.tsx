@@ -1,8 +1,16 @@
 'use client'
 
 import { useEffect, useMemo, useState } from 'react'
-import { Activity, Bot, GitBranch, Play, RefreshCw, Send } from 'lucide-react'
-import { createAnalysis, getHealth, getTask, listTasks, simulateWebhook, type WorkflowTask } from '@/lib/api'
+import { Activity, Bot, GitBranch, Play, RefreshCw, Send, TerminalSquare } from 'lucide-react'
+import {
+  analyzeCiLog,
+  createAnalysis,
+  getHealth,
+  getTask,
+  listTasks,
+  simulateWebhook,
+  type WorkflowTask,
+} from '@/lib/api'
 import { StatusBadge } from '@/components/StatusBadge'
 import { TaskResult } from '@/components/TaskResult'
 
@@ -25,9 +33,20 @@ const samplePayload = JSON.stringify(
   2,
 )
 
+const sampleCiLog = `Run pytest
+FAILED tests/test_auth.py::test_login_after_password_reset
+AssertionError: expected status code 200, got 500
+Traceback (most recent call last):
+  File "tests/test_auth.py", line 41, in test_login_after_password_reset
+    assert response.status_code == 200
+exit code 1`
+
 export default function HomePage() {
   const [sourceUrl, setSourceUrl] = useState('')
   const [payload, setPayload] = useState(samplePayload)
+  const [ciRepo, setCiRepo] = useState('Fhonglei/sample-app')
+  const [ciWorkflow, setCiWorkflow] = useState('CI')
+  const [ciLog, setCiLog] = useState(sampleCiLog)
   const [tasks, setTasks] = useState<WorkflowTask[]>([])
   const [selectedId, setSelectedId] = useState<string>()
   const [loading, setLoading] = useState(false)
@@ -89,6 +108,24 @@ export default function HomePage() {
     }
   }
 
+  async function runCiLogAnalysis() {
+    setError('')
+    setLoading(true)
+    try {
+      const result = await analyzeCiLog(ciRepo, ciWorkflow, ciLog)
+      setSelectedId(result.task_id)
+      await pollTask(result.task_id)
+      await refresh()
+    } catch (err) {
+      const task = localDemoTask('ci-log', 'CI failure demo analysis', 'ci_failure')
+      setTasks((current) => [task, ...current])
+      setSelectedId(task.id)
+      setError('Backend is unavailable, so the dashboard generated a local CI failure demo.')
+    } finally {
+      setLoading(false)
+    }
+  }
+
   async function pollTask(taskId: string) {
     for (let index = 0; index < 20; index += 1) {
       const task = await getTask(taskId)
@@ -120,7 +157,7 @@ export default function HomePage() {
             Backend {health?.status || 'checking'}
           </div>
           <div className="mt-1 text-xs text-steel">
-            LLM {health?.llm_configured ? 'on' : 'fallback'} · GitHub token {health?.github_configured ? 'on' : 'off'}
+            LLM {health?.llm_configured ? 'on' : 'fallback'} / GitHub token {health?.github_configured ? 'on' : 'off'}
           </div>
         </div>
       </header>
@@ -145,6 +182,41 @@ export default function HomePage() {
             >
               <Send className="h-4 w-4" />
               Analyze
+            </button>
+          </section>
+
+          <section className="rounded-md border border-line bg-white p-4 shadow-soft">
+            <h2 className="mb-3 flex items-center gap-2 text-sm font-semibold text-ink">
+              <TerminalSquare className="h-4 w-4" />
+              CI Failure Analyzer
+            </h2>
+            <div className="grid gap-2 sm:grid-cols-2">
+              <input
+                value={ciRepo}
+                onChange={(event) => setCiRepo(event.target.value)}
+                className="w-full rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-accent"
+                placeholder="owner/repo"
+              />
+              <input
+                value={ciWorkflow}
+                onChange={(event) => setCiWorkflow(event.target.value)}
+                className="w-full rounded-md border border-line px-3 py-2 text-sm outline-none focus:border-accent"
+                placeholder="Workflow"
+              />
+            </div>
+            <textarea
+              value={ciLog}
+              onChange={(event) => setCiLog(event.target.value)}
+              rows={8}
+              className="mt-2 w-full resize-none rounded-md border border-line px-3 py-2 font-mono text-xs outline-none focus:border-accent"
+            />
+            <button
+              onClick={runCiLogAnalysis}
+              disabled={loading || ciLog.length < 20}
+              className="mt-3 inline-flex w-full items-center justify-center gap-2 rounded-md bg-amber px-3 py-2 text-sm font-semibold text-white disabled:cursor-not-allowed disabled:opacity-50"
+            >
+              <TerminalSquare className="h-4 w-4" />
+              Analyze CI Failure
             </button>
           </section>
 
@@ -210,11 +282,15 @@ export default function HomePage() {
   )
 }
 
-function localDemoTask(sourceUrl: string, title: string): WorkflowTask {
+function localDemoTask(
+  sourceUrl: string,
+  title: string,
+  kind: WorkflowTask['kind'] = 'webhook_simulation',
+): WorkflowTask {
   const now = new Date().toISOString()
   return {
     id: `local-${Date.now()}`,
-    kind: 'webhook_simulation',
+    kind,
     status: 'completed',
     source_url: sourceUrl,
     repo_full_name: 'Fhonglei/sample-app',

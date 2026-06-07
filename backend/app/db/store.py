@@ -9,6 +9,7 @@ from app.config import settings
 from app.models.schemas import AnalysisResult, TaskOut
 
 _lock = threading.Lock()
+_initialized_path: Optional[str] = None
 
 
 def _now() -> str:
@@ -24,6 +25,10 @@ def _connect() -> sqlite3.Connection:
 
 
 def init_db() -> None:
+    global _initialized_path
+    current_path = str(settings.db_path)
+    if _initialized_path == current_path:
+        return
     with _lock, _connect() as conn:
         conn.execute(
             """
@@ -44,9 +49,11 @@ def init_db() -> None:
             """
         )
         conn.commit()
+        _initialized_path = current_path
 
 
 def create_task(task_id: str, kind: str, source_url: Optional[str] = None) -> TaskOut:
+    init_db()
     now = _now()
     with _lock, _connect() as conn:
         conn.execute(
@@ -63,6 +70,7 @@ def create_task(task_id: str, kind: str, source_url: Optional[str] = None) -> Ta
 
 
 def update_task(task_id: str, **updates: Any) -> None:
+    init_db()
     if not updates:
         return
     updates["updated_at"] = _now()
@@ -105,16 +113,17 @@ def _row_to_task(row: sqlite3.Row) -> TaskOut:
 
 
 def get_task(task_id: str) -> Optional[TaskOut]:
+    init_db()
     with _lock, _connect() as conn:
         row = conn.execute("SELECT * FROM tasks WHERE id = ?", (task_id,)).fetchone()
     return _row_to_task(row) if row else None
 
 
 def list_tasks(limit: int = 50) -> List[TaskOut]:
+    init_db()
     with _lock, _connect() as conn:
         rows = conn.execute(
             "SELECT * FROM tasks ORDER BY created_at DESC LIMIT ?",
             (limit,),
         ).fetchall()
     return [_row_to_task(row) for row in rows]
-

@@ -17,7 +17,8 @@ Use this script for a 60-90 second portfolio video.
 4. Show category, priority, confidence, labels, impact modules, action plan, and test plan.
 5. Copy the maintainer comment and explain how it could be posted back to GitHub.
 6. Run the Webhook Simulator payload.
-7. Show recent task history.
+7. Paste the sample CI failure log and show the generated test-focused action plan.
+8. Show recent task history.
 
 ## What To Say
 
@@ -30,4 +31,3 @@ This project turns GitHub events into structured engineering decisions. It is no
 - Why automatic comments and labels should be gated by permissions.
 - How this would scale with a queue and PostgreSQL.
 - How to evaluate triage accuracy with a labeled issue dataset.
-

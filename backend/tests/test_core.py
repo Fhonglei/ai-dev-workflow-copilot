@@ -1,4 +1,4 @@
-from app.core.analyzer import heuristic_analysis
+from app.core.analyzer import heuristic_analysis, parse_llm_json
 from app.core.github_client import GitHubContext, parse_github_url
 from app.core.webhook import verify_github_signature
 
@@ -45,10 +45,31 @@ def test_heuristic_analysis_for_bug():
     assert result.test_plan
 
 
+def test_heuristic_analysis_for_ci_failure():
+    context = make_context("CI failed on pytest")
+    context.kind = "ci_failure"
+    context.body = "pytest failed with AssertionError and exit code 1"
+    result = heuristic_analysis(context)
+    assert result.category == "bug"
+    assert result.priority == "P2"
+    assert "ci" in result.impact_modules
+    assert "ci-failure" in result.suggested_labels
+    assert any("failing command" in item.lower() for item in result.action_plan)
+
+
+def test_parse_llm_json_accepts_markdown_fence():
+    parsed = parse_llm_json('```json\n{"category":"bug","priority":"P2"}\n```')
+    assert parsed["category"] == "bug"
+
+
+def test_parse_llm_json_extracts_object_from_text():
+    parsed = parse_llm_json('Here is the result: {"category":"docs","priority":"P3"} Thanks.')
+    assert parsed["priority"] == "P3"
+
+
 def test_verify_github_signature_without_secret_allows_request():
     assert verify_github_signature(b"{}", None, "") is True
 
 
 def test_verify_github_signature_rejects_wrong_signature():
     assert verify_github_signature(b"{}", "sha256=bad", "secret") is False
-

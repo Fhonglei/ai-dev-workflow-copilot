@@ -56,6 +56,29 @@ async def run_webhook_analysis(
         update_task(task_id, status="failed", error=str(exc))
 
 
+async def run_ci_log_analysis(task_id: str, repo_full_name: str, workflow_name: str, log_text: str) -> None:
+    try:
+        update_task(task_id, status="fetching_context", repo_full_name=repo_full_name, title=workflow_name)
+        context = GitHubContext(
+            kind="ci_failure",
+            owner=repo_full_name.split("/", 1)[0] if "/" in repo_full_name else "unknown",
+            repo=repo_full_name.split("/", 1)[1] if "/" in repo_full_name else repo_full_name,
+            number=0,
+            title=f"{workflow_name} failure",
+            body=_summarize_ci_log(log_text),
+            author="ci",
+            state="failed",
+            labels=[],
+            comments=0,
+            repo_full_name=repo_full_name,
+            html_url="",
+            ci_summary=[{"name": workflow_name, "status": "completed", "conclusion": "failure"}],
+        )
+        await _analyze_and_optionally_act(task_id, context, auto_comment=False, apply_labels=False)
+    except Exception as exc:
+        update_task(task_id, status="failed", error=str(exc))
+
+
 async def _analyze_and_optionally_act(
     task_id: str,
     context: GitHubContext,
@@ -105,6 +128,23 @@ def create_webhook_task(event_type: str, payload: dict, simulation: bool = False
     return task_id
 
 
+def create_ci_log_task(repo_full_name: str, workflow_name: str) -> str:
+    task_id = new_task_id()
+    create_task(task_id, kind="ci_failure")
+    update_task(task_id, repo_full_name=repo_full_name, title=f"{workflow_name} failure")
+    return task_id
+
+
+def _summarize_ci_log(log_text: str) -> str:
+    interesting = []
+    for line in log_text.splitlines():
+        lowered = line.lower()
+        if any(token in lowered for token in ["error", "failed", "traceback", "assert", "exit code", "npm err", "pytest"]):
+            interesting.append(line.strip())
+    excerpt = "\n".join(interesting[:40]) or log_text[:4000]
+    return f"CI failure log excerpt:\n{excerpt[:6000]}"
+
+
 def _safe_parse(source_url: str) -> tuple[Optional[str], Optional[str], str, Optional[int]]:
     from app.core.github_client import parse_github_url
 
@@ -113,4 +153,3 @@ def _safe_parse(source_url: str) -> tuple[Optional[str], Optional[str], str, Opt
         return owner, repo, kind, number
     except Exception:
         return None, None, "issue", None
-
