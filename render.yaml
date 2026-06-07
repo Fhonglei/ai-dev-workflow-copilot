@@ -1,0 +1,16 @@
+services:
+  - type: web
+    name: ai-dev-workflow-copilot-api
+    runtime: docker
+    rootDir: backend
+    healthCheckPath: /api/health
+    envVars:
+      - key: CORS_ORIGINS
+        value: http://localhost:3000
+      - key: DEEPSEEK_API_KEY
+        sync: false
+      - key: GITHUB_TOKEN
+        sync: false
+      - key: GITHUB_WEBHOOK_SECRET
+        generateValue: true
+
