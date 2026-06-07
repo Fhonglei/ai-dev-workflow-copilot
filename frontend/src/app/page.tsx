@@ -62,7 +62,10 @@ export default function HomePage() {
       await pollTask(result.task_id)
       await refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to start analysis')
+      const task = localDemoTask(sourceUrl, 'GitHub URL demo analysis')
+      setTasks((current) => [task, ...current])
+      setSelectedId(task.id)
+      setError('Backend is unavailable, so the dashboard generated a local demo analysis.')
     } finally {
       setLoading(false)
     }
@@ -77,7 +80,10 @@ export default function HomePage() {
       await pollTask(result.task_id)
       await refresh()
     } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to simulate webhook')
+      const task = localDemoTask('webhook-simulator', 'Webhook simulator demo analysis')
+      setTasks((current) => [task, ...current])
+      setSelectedId(task.id)
+      setError('Backend is unavailable, so the dashboard generated a local webhook demo.')
     } finally {
       setLoading(false)
     }
@@ -204,3 +210,58 @@ export default function HomePage() {
   )
 }
 
+function localDemoTask(sourceUrl: string, title: string): WorkflowTask {
+  const now = new Date().toISOString()
+  return {
+    id: `local-${Date.now()}`,
+    kind: 'webhook_simulation',
+    status: 'completed',
+    source_url: sourceUrl,
+    repo_full_name: 'Fhonglei/sample-app',
+    number: 18,
+    title,
+    created_at: now,
+    updated_at: now,
+    analysis: {
+      category: 'bug',
+      priority: 'P2',
+      confidence_score: 74,
+      summary:
+        'The workflow item appears to be a backend-facing defect affecting authentication or request handling. It should be triaged before feature work because it can block a normal user path.',
+      suggested_labels: ['bug', 'p2', 'needs-triage', 'backend'],
+      impact_modules: ['backend', 'auth', 'api'],
+      probable_causes: [
+        'The affected code path may be missing validation around an edge case.',
+        'A recent refactor likely changed the request or session contract.',
+        'The current tests do not appear to cover this failure mode.',
+      ],
+      action_plan: [
+        'Reproduce the failure with a minimal request or GitHub issue payload.',
+        'Inspect the affected API/auth module and compare behavior with the expected contract.',
+        'Add the smallest focused fix without unrelated refactors.',
+        'Add regression coverage before closing the issue.',
+      ],
+      test_plan: [
+        'Add a unit test for the failing branch.',
+        'Add an API test for the user-facing workflow.',
+        'Run backend tests, frontend typecheck, and CI before merging.',
+      ],
+      acceptance_criteria: [
+        'The issue has category, priority, labels, and maintainer summary.',
+        'The defect can be reproduced before the fix and passes after the fix.',
+        'Regression tests prevent the same failure from returning.',
+      ],
+      review_checklist: [
+        'Does the fix address only the reported behavior?',
+        'Are edge cases and error states covered?',
+        'Is the maintainer comment clear enough for a teammate to act on?',
+      ],
+      maintainer_comment:
+        'AI triage summary: classified as `bug` with priority `P2`. Likely affected area: backend/auth/api. Recommended next step: reproduce the failure, inspect the touched code path, and add focused regression coverage before closing.',
+      risks: [
+        'Local demo mode does not call GitHub or an LLM.',
+        'A maintainer should review labels before applying them automatically.',
+      ],
+    },
+  }
+}
