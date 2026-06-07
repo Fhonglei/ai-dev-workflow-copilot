@@ -6,11 +6,13 @@ This is designed as a portfolio-grade computer science internship project: it de
 
 ## Demo
 
-- Frontend: add Vercel URL after deployment.
-- Backend health: add Railway/Render URL after deployment.
+- Frontend preview: https://ai-dev-workflow-copilot-frontend-7lmw9tbqi-fhongleis-projects.vercel.app
+- Backend health: Railway deployment is configured, but the current Railway free plan resource limit blocked provisioning a new service.
 - Demo script: `docs/DEMO_SCRIPT.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Technical blog: `docs/TECHNICAL_BLOG.md`
+
+The frontend includes a local demo fallback, so the online dashboard can still demonstrate the full triage result UI even before the backend is provisioned.
 
 ## Features
 
@@ -181,4 +183,3 @@ This project shows practical software engineering work rather than only prompt c
 - Add CI failure log ingestion from GitHub Actions jobs.
 - Add evaluation set with labeled issues and accuracy metrics.
 - Add user accounts and per-user repository isolation.
-
