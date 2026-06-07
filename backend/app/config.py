@@ -12,6 +12,7 @@ class Settings(BaseSettings):
     environment: str = "development"
 
     cors_origins: str = "http://localhost:3000"
+    cors_origin_regex: str = r"https://.*\.vercel\.app"
     database_path: str = "data/workflow.db"
 
     github_token: str = ""
@@ -47,4 +48,3 @@ def get_settings() -> Settings:
 
 
 settings = get_settings()
-

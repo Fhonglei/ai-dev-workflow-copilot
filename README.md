@@ -6,13 +6,13 @@ This is designed as a portfolio-grade computer science internship project: it de
 
 ## Demo
 
-- Frontend preview: https://ai-dev-workflow-copilot-frontend-7lmw9tbqi-fhongleis-projects.vercel.app
-- Backend health: Railway deployment is configured, but the current Railway free plan resource limit blocked provisioning a new service.
+- Frontend preview: https://ai-dev-workflow-copilot-frontend-8cl7thg2i-fhongleis-projects.vercel.app
+- Backend preview health: https://ai-dev-workflow-copilot-1fc0z6g23-fhongleis-projects.vercel.app/api/health
 - Demo script: `docs/DEMO_SCRIPT.md`
 - Architecture: `docs/ARCHITECTURE.md`
 - Technical blog: `docs/TECHNICAL_BLOG.md`
 
-The frontend includes a local demo fallback, so the online dashboard can still demonstrate the full triage result UI even before the backend is provisioned.
+Railway deployment is configured, but the current Railway free plan resource limit blocked provisioning a new service. The backend is currently deployed on Vercel preview in fallback mode. The frontend includes a local demo fallback, so the online dashboard can still demonstrate the full triage result UI if the backend is unreachable from a visitor's network.
 
 ## Features
 
