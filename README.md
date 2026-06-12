@@ -170,31 +170,3 @@ Frontend variable:
 ```env
 NEXT_PUBLIC_API_URL=https://your-backend-domain
 ```
-
-## Why This Helps Internship Applications
-
-This project shows practical software engineering work rather than only prompt calling:
-
-- Webhook-driven automation.
-- Real GitHub API context retrieval.
-- LLM output structured into engineering decisions.
-- Background workflow states and task history.
-- CI failure triage and an evaluation dataset for output quality.
-- CI, tests, Docker, cloud deployment configuration.
-- A realistic use case for developer productivity teams, internal tools teams, and AI engineering roles.
-
-## Resume Bullets
-
-- Built an AI-powered GitHub workflow automation tool that analyzes issues, pull requests, and webhook events into priority, labels, impact areas, action plans, test plans, and maintainer-ready comments.
-- Integrated FastAPI with GitHub REST APIs and webhook signature validation, with optional automated label/comment actions using repository tokens.
-- Implemented a Next.js dashboard for workflow task tracking, webhook simulation, and structured AI triage results.
-- Added deterministic fallback triage rules, pytest coverage, Docker Compose, and GitHub Actions CI for production-oriented engineering quality.
-
-## Roadmap
-
-- Add GitHub App installation flow instead of personal tokens.
-- Store tasks in PostgreSQL for production.
-- Add Redis/RQ queue for high-volume webhook processing.
-- Add CI failure log ingestion from GitHub Actions jobs.
-- Expand the evaluation set with more labeled issues and PRs.
-- Add user accounts and per-user repository isolation.
